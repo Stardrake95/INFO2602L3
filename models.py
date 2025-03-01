@@ -107,6 +107,14 @@ class User(db.Model):
         "email": self.email,
         "type": self.type
     }
+  def login_user(username, password):
+    user = User.query.filter_by(username=username).first()
+    if user and user.check_password(password):
+      token = create_access_token(identity=username)
+      response = jsonify(access_token=token)
+      set_access_cookies(response, token)
+      return response
+    return jsonify(message="Invalid username or password"), 401
 
 
 class RegularUser(User):
@@ -186,4 +194,31 @@ class RegularUser(User):
 
 
 class Admin(User):
-  pass
+  __tablename__ = 'admin'
+  staff_id = db.Column(db.String(120), unique=True)
+  __mapper_args__ = {
+      'polymorphic_identity': 'admin',
+  }
+
+  def get_all_todos_json(self):
+    todos = Todo.query.all()
+    if todos:
+      return [todo.get_json() for todo in todos]
+    else:
+      return []
+
+  def __init__(self, staff_id, username, email, password):
+    super().__init__(username, email, password)
+    self.staff_id = staff_id
+
+  def get_json(self):
+    return {
+        "id": self.id,
+        "username": self.username,
+        "email": self.email,
+        "staff_id": self.staff_id,
+        "type": self.type
+    }
+
+  def __repr__(self):
+    return f'<Admin {self.id} : {self.username} - {self.email}>'
